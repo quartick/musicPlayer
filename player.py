@@ -7,10 +7,10 @@ from pathlib import Path
 import os
 import shutil
 import json
-from player_gui import Ui_MainWindow
+from player_gui import Ui_MainWindow, Modal
 from PyQt5.QtCore import QTimer
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 
 from pygame import mixer
 
@@ -32,6 +32,7 @@ class Player(Ui_MainWindow):
         self.playlist_array: list = list()
         self.playlist = None
         self.playing_track = None
+        self.playing_playlist = None
         self.is_music_playing: bool = False
         self.is_track_initialized: bool = False
         self.is_track_muted: bool = False
@@ -40,6 +41,7 @@ class Player(Ui_MainWindow):
         self.app = QtWidgets.QApplication(sys.argv)
         self.GenerateWindow = QtWidgets.QMainWindow()
         self.ui = Ui_MainWindow()
+        self.modal = Modal()
         self.ui.setupUi(self.GenerateWindow)
         self.GenerateWindow.show()
 
@@ -47,16 +49,21 @@ class Player(Ui_MainWindow):
         self.ui.previousButton.clicked.connect(self.previous)
         self.ui.nextButton.clicked.connect(self.next)
         self.ui.addTracksButton.clicked.connect(self.add_track)
+        self.modal.addTracksButton.clicked.connect(self.add_track)
         # self.ui.track_up_button.clicked.connect(self.track_up)
         # self.ui.track_down_button.clicked.connect(self.track_down)
         self.ui.tracksListWidget.itemClicked.connect(self.set_clicked_track_as_current_track)
         self.ui.tracksListWidget.itemDoubleClicked.connect(self.track_init)
+        self.modal.tracksListWidget.itemClicked.connect(self.set_clicked_track_as_current_track_for_modal)
+        self.modal.tracksListWidget.itemDoubleClicked.connect(self.track_init)
+        self.modal.tracksListWidget.dropEvent = self.modalDropEvent
         self.ui.tracksListWidget.dropEvent = self.dropEvent
         self.ui.deleteTrackButton.clicked.connect(self.delete_track)
+        self.modal.deleteTrackButton.clicked.connect(self.delete_track)
         self.ui.addPlaylistButton.clicked.connect(self.add_playlist)
         self.ui.deletePlaylistButton.clicked.connect(self.delete_playlist)
         self.ui.playlistListWidget.itemClicked.connect(self.set_clicked_playlist_as_current_playlist)
-        self.ui.playlistListWidget.itemDoubleClicked.connect(self.open_track_menu)
+        self.ui.playlistListWidget.itemDoubleClicked.connect(self.open)
         self.ui.volumeSlider.sliderMoved.connect(self.volume_change)
         self.ui.muteButton.clicked.connect(self.mute)
         # self.ui.return_to_playlist_button.clicked.connect(self.return_to_playlist)
@@ -83,6 +90,7 @@ class Player(Ui_MainWindow):
             self.pause()
 
     def dropEvent(self, event):
+        self.playlist = self.playlist_array[0]
         insert_pos = event.pos()
         from_list = event.source()
         insert_index = from_list.row(self.ui.tracksListWidget.itemAt(insert_pos))
@@ -95,6 +103,25 @@ class Player(Ui_MainWindow):
             self.playlist.current_track = self.playlist[insert_index]
         self.update_track_list()
 
+    def modalDropEvent(self, event):
+        insert_pos = event.pos()
+        from_list = event.source()
+        insert_index = from_list.row(self.modal.tracksListWidget.itemAt(insert_pos))
+        drop_index = self.modal.tracksListWidget.currentRow()
+        self.playlist[insert_index].data, self.playlist[drop_index].data = \
+            self.playlist[drop_index].data, self.playlist[insert_index].data
+        if self.playing_track == self.playlist[insert_index]:
+            self.playlist.current_track = self.playlist[drop_index]
+        elif self.playing_track == self.playlist[drop_index]:
+            self.playlist.current_track = self.playlist[insert_index]
+        self.update_track_list()
+
+    def open(self):
+        self.modal.close()
+        self.modal.nameLabel.setText('%s' % self.playlist.name)
+        self.modal.countLabel.setText('%d треков' % self.playlist.length)
+        self.modal.show()
+
     def track_init(self):
         """
         Инициализация трека
@@ -103,6 +130,7 @@ class Player(Ui_MainWindow):
             self.set_current_row()
             self.timer.start()
             self.playing_track = self.playlist.current_track
+            self.playing_playlist = self.playlist
             self.ui.currentTrackLabel.setText(self.playlist.current_track.data.name)
             self.ui.songSlider.setRange(0, self.playlist.current_track.data.duration)
             audio_path: str = self.playlist.current_track.data.path
@@ -167,14 +195,17 @@ class Player(Ui_MainWindow):
         """
         Вывод на интерфейс времни
         """
-        if self.playlist.current_track is not None:
+        if self.playing_playlist.current_track is not None:
             seconds = mixer.music.get_pos() // 1000
             self.ui.trackTimerLabel.setText(self.get_time(seconds))
             self.ui.songSlider.setValue(seconds)
-            if seconds >= self.playlist.current_track.data.duration:
+            if seconds >= self.playing_playlist.current_track.data.duration:
                 self.next()
 
     def mute(self):
+        """
+        Заглушить/разглушить звук трека
+        """
         if not self.is_track_muted:
             self.temp_volume = self.ui.volumeSlider.value()
             self.ui.volumeSlider.setValue(0)
@@ -187,6 +218,10 @@ class Player(Ui_MainWindow):
             self.is_track_muted = False
 
     def volume_change(self, volume):
+        """
+        Изменение громкости трека
+        :param volume: изменяемое значение громкости
+        """
         if 67 <= volume < 100:
             self.ui.muteButton.setIcon(QIcon("other_files/Speaker3.png"))
             self.is_track_muted = False
@@ -235,15 +270,29 @@ class Player(Ui_MainWindow):
         """
         Обновление списка песен
         """
-        self.ui.tracksListWidget.clear()
-        for track in self.playlist:
-            self.ui.tracksListWidget.addItem(track.data.name)
+        if self.playlist.name == '':
+            self.ui.tracksListWidget.clear()
+            for track in self.playlist:
+                self.ui.tracksListWidget.addItem(track.data.name)
+        else:
+            self.modal.tracksListWidget.clear()
+            for track in self.playlist:
+                self.modal.tracksListWidget.addItem(track.data.name)
+                self.modal.countLabel.setText('%d треков' % self.playlist.length)
 
     def set_clicked_track_as_current_track(self, item: object):
         """
         Установка выбранного трека как нанешнего
         :param item: Выбранный трек
         """
+        self.playlist = self.playlist_array[0]
+        self.modal.close()
+        for track in self.playlist:
+            if track.data.name == item.text():
+                self.playlist.current_track = track
+                self.is_track_initialized = False
+
+    def set_clicked_track_as_current_track_for_modal(self, item: object):
         for track in self.playlist:
             if track.data.name == item.text():
                 self.playlist.current_track = track
@@ -315,7 +364,7 @@ class Player(Ui_MainWindow):
                 new_playlist = Playlist(name=playlist_name)
                 self.playlist_array.append(new_playlist)
                 self.update_playlist_menu()
-                self.playlist = new_playlist
+                # self.playlist = new_playlist
             else:
                 self.message_box("Плейлист с таким названием уже есть", "Введите другое название")
         else:
@@ -334,8 +383,18 @@ class Player(Ui_MainWindow):
         Удаление плейлиста
         """
         if self.playlist_array[1:]:
-            self.playlist_array.remove(self.playlist)
-            self.update_playlist_menu()
+            if self.playlist is not None and self.playlist.name != '':
+                if self.playlist.name == self.modal.nameLabel.text():
+                    self.modal.close()
+                self.playlist_array.remove(self.playlist)
+                if self.playing_playlist is not None:
+                    self.playlist = self.playing_playlist
+                else:
+                    self.playlist = None
+
+                self.update_playlist_menu()
+            else:
+                self.message_box("Нечего удалять", "Не выбран плейлист")
         else:
             self.message_box("Нечего удалять", "Список плейлистов пустой")
 
@@ -348,15 +407,15 @@ class Player(Ui_MainWindow):
             if playlist.name == item.text():
                 self.playlist = playlist
 
-    def open_track_menu(self, item: object):
-        """
-        Открытие меню трека по выбранному плейлисту
-        :param item: Выбранный плейлист
-        """
-        self.set_clicked_playlist_as_current_playlist(item)
-        self.update_track_list()
-        self.ui.currentTrackLabel.setText(item.text())
-        self.ui.stackedWidget.setCurrentIndex(0)
+    # def open_track_menu(self, item: object):
+    #     """
+    #     Открытие меню трека по выбранному плейлисту
+    #     :param item: Выбранный плейлист
+    #     """
+    #     self.set_clicked_playlist_as_current_playlist(item)
+    #     self.update_track_list()
+    #     self.ui.currentTrackLabel.setText(item.text())
+    #     self.ui.stackedWidget.setCurrentIndex(0)
 
     def is_current_track_not_none(self, text: str) -> bool:
         """
