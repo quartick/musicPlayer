@@ -334,7 +334,8 @@ class Ui_MainWindow(object):
         self.currentTrackLabel.setText(_translate("MainWindow", ""))
         self.trackTimerLabel.setText(_translate("MainWindow", ""))
         self.muteButton.setShortcut(_translate("MainWindow", "M"))
-# import test_rc
+
+
 class Modal(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)

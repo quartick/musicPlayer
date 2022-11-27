@@ -50,8 +50,6 @@ class Player(Ui_MainWindow):
         self.ui.nextButton.clicked.connect(self.next)
         self.ui.addTracksButton.clicked.connect(self.add_track)
         self.modal.addTracksButton.clicked.connect(self.add_track)
-        # self.ui.track_up_button.clicked.connect(self.track_up)
-        # self.ui.track_down_button.clicked.connect(self.track_down)
         self.ui.tracksListWidget.itemClicked.connect(self.set_clicked_track_as_current_track)
         self.ui.tracksListWidget.itemDoubleClicked.connect(self.track_init)
         self.modal.tracksListWidget.itemClicked.connect(self.set_clicked_track_as_current_track_for_modal)
@@ -66,7 +64,6 @@ class Player(Ui_MainWindow):
         self.ui.playlistListWidget.itemDoubleClicked.connect(self.open)
         self.ui.volumeSlider.sliderMoved.connect(self.volume_change)
         self.ui.muteButton.clicked.connect(self.mute)
-        # self.ui.return_to_playlist_button.clicked.connect(self.return_to_playlist)
 
         self.make_playlist_with_existing_data()
 
@@ -90,6 +87,10 @@ class Player(Ui_MainWindow):
             self.pause()
 
     def dropEvent(self, event):
+        """
+        Переопределение метода dropEvent для корректной работы перемещения треков
+        :param event: Перемещение
+        """
         self.playlist = self.playlist_array[0]
         insert_pos = event.pos()
         from_list = event.source()
@@ -104,6 +105,10 @@ class Player(Ui_MainWindow):
         self.update_track_list()
 
     def modalDropEvent(self, event):
+        """
+        Переопределение метода dropEvent для корректной работы перемещения треков
+        :param event: Перемещение
+        """
         insert_pos = event.pos()
         from_list = event.source()
         insert_index = from_list.row(self.modal.tracksListWidget.itemAt(insert_pos))
@@ -117,6 +122,9 @@ class Player(Ui_MainWindow):
         self.update_track_list()
 
     def open(self):
+        """
+        Метод открытие модального окна плейлиста
+        """
         self.modal.close()
         self.modal.nameLabel.setText('%s' % self.playlist.name)
         self.modal.countLabel.setText('%d треков' % self.playlist.length)
@@ -293,6 +301,10 @@ class Player(Ui_MainWindow):
                 self.is_track_initialized = False
 
     def set_clicked_track_as_current_track_for_modal(self, item: object):
+        """
+        Установка выбранного трека как нанешнего
+        :param item: Выбранный трек
+        """
         for track in self.playlist:
             if track.data.name == item.text():
                 self.playlist.current_track = track
@@ -407,16 +419,6 @@ class Player(Ui_MainWindow):
             if playlist.name == item.text():
                 self.playlist = playlist
 
-    # def open_track_menu(self, item: object):
-    #     """
-    #     Открытие меню трека по выбранному плейлисту
-    #     :param item: Выбранный плейлист
-    #     """
-    #     self.set_clicked_playlist_as_current_playlist(item)
-    #     self.update_track_list()
-    #     self.ui.currentTrackLabel.setText(item.text())
-    #     self.ui.stackedWidget.setCurrentIndex(0)
-
     def is_current_track_not_none(self, text: str) -> bool:
         """
         Проверка наличия нынешнего трека
@@ -427,14 +429,6 @@ class Player(Ui_MainWindow):
             self.message_box(text, "Добавьте песню")
             return False
         return True
-
-    def return_to_playlist(self):
-        """
-        Обработчик нажатия кнопки return.
-        Возвращение к меню плейлистов
-        """
-        pass
-        self.ui.stackedWidget.setCurrentIndex(1)
 
     def make_playlist_with_existing_data(self):
         """
