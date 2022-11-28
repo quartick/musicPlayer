@@ -231,9 +231,11 @@ class LinkedList:
         :param item: Элемент связного списка
         :return: True/False
         """
-        for i in range(self.__len__()):
-            if self.__getitem__(i) == item:
+        temp_item = self.head
+        for _ in range(self.length):
+            if temp_item.data == item:
                 return True
+            temp_item = temp_item.next_item
         return False
 
     def __reversed__(self):
