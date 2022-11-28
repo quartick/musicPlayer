@@ -100,9 +100,12 @@ class Player(Ui_MainWindow):
             self.playlist[drop_index].data, self.playlist[insert_index].data
         if self.playing_track == self.playlist[insert_index]:
             self.playlist.current_track = self.playlist[drop_index]
+            self.playing_track = self.playlist[drop_index]
         elif self.playing_track == self.playlist[drop_index]:
             self.playlist.current_track = self.playlist[insert_index]
+            self.playing_track = self.playlist[insert_index]
         self.update_track_list()
+        self.set_current_row()
 
     def modalDropEvent(self, event):
         """
@@ -117,9 +120,12 @@ class Player(Ui_MainWindow):
             self.playlist[drop_index].data, self.playlist[insert_index].data
         if self.playing_track == self.playlist[insert_index]:
             self.playlist.current_track = self.playlist[drop_index]
+            self.playing_track = self.playlist[drop_index]
         elif self.playing_track == self.playlist[drop_index]:
             self.playlist.current_track = self.playlist[insert_index]
+            self.playing_track = self.playlist[insert_index]
         self.update_track_list()
+        self.set_current_row()
 
     def open(self):
         """
@@ -418,6 +424,8 @@ class Player(Ui_MainWindow):
         for playlist in self.playlist_array:
             if playlist.name == item.text():
                 self.playlist = playlist
+                if not self.is_music_playing:
+                    self.is_track_initialized = False
 
     def is_current_track_not_none(self, text: str) -> bool:
         """
