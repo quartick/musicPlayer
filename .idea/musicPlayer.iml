@@ -4,7 +4,5 @@
     <content url="file://$MODULE_DIR$" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="algo_3" />
-    <orderEntry type="module" module-name="vvpd_proj" />
   </component>
 </module>

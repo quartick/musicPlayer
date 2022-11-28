@@ -1,6 +1,12 @@
+"""
+Модуль плеера, связывающего графическую и
+функицональную состоявляющие воедино.
+
+"""
+
 import sys
 
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import QMessageBox, QInputDialog
 
 from pathlib import Path
@@ -10,7 +16,7 @@ import json
 from player_gui import Ui_MainWindow, Modal
 from PyQt5.QtCore import QTimer
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets
 
 from pygame import mixer
 
@@ -92,6 +98,7 @@ class Player(Ui_MainWindow):
         :param event: Перемещение
         """
         self.playlist = self.playlist_array[0]
+        self.modal.close()
         insert_pos = event.pos()
         from_list = event.source()
         insert_index = from_list.row(self.ui.tracksListWidget.itemAt(insert_pos))
@@ -134,6 +141,7 @@ class Player(Ui_MainWindow):
         self.modal.close()
         self.modal.nameLabel.setText('%s' % self.playlist.name)
         self.modal.countLabel.setText('%d треков' % self.playlist.length)
+        self.update_track_list()
         self.modal.show()
 
     def track_init(self):
@@ -145,7 +153,19 @@ class Player(Ui_MainWindow):
             self.timer.start()
             self.playing_track = self.playlist.current_track
             self.playing_playlist = self.playlist
-            self.ui.currentTrackLabel.setText(self.playlist.current_track.data.name)
+            if self.playing_track.data.image:
+                self.ui.imageLabel.setPixmap(QPixmap(self.playing_track.data.image).scaled(28, 28))
+            else:
+                self.ui.imageLabel.setPixmap(QPixmap("other_files/unnamed.png").scaled(28, 28))
+            if self.playing_track.data.title:
+                self.ui.currentTrackLabel.setText(self.playing_track.data.title)
+            else:
+                self.ui.currentTrackLabel.setText(self.playing_track.data.name)
+            if self.playing_track.data.artist:
+                self.ui.authorLabel.setText(self.playing_track.data.artist)
+            else:
+                self.ui.authorLabel.setText("Неизвестен")
+            # self.ui.currentTrackLabel.setText(self.playlist.current_track.data.name)
             self.ui.songSlider.setRange(0, self.playlist.current_track.data.duration)
             audio_path: str = self.playlist.current_track.data.path
             self.playlist.play_all(audio_path)
@@ -329,6 +349,8 @@ class Player(Ui_MainWindow):
                     self.playlist.current_track = None
                     self.ui.pauseButton.setIcon(QIcon("other_files/375.png"))
                     self.ui.currentTrackLabel.setText('')
+                    self.ui.authorLabel.setText('')
+                    self.ui.imageLabel.setPixmap(QPixmap(''))
                     self.ui.trackTimerLabel.setText('')
                     self.ui.songSlider.setValue(0)
                     self.is_track_initialized = False
@@ -336,14 +358,17 @@ class Player(Ui_MainWindow):
             else:
                 if self.playlist.length > 0:
                     self.playlist.delete_track()
-                elif self.playlist.length == 0:
+                if self.playlist.length == 0:
                     self.playlist.current_track = None
                     self.ui.currentTrackLabel.setText('')
+                    self.ui.authorLabel.setText('')
+                    self.ui.imageLabel.setPixmap(QPixmap(''))
                     self.ui.trackTimerLabel.setText('')
                     self.ui.songSlider.setValue(0)
                     self.is_track_initialized = False
                     mixer.music.stop()
             self.update_track_list()
+            self.set_current_row()
 
     @staticmethod
     def message_box(text: str, informative_text: str):
